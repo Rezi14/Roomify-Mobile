@@ -18,6 +18,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final _bookingService = BookingService();
   PemesananModel? _pemesanan;
   bool _isLoading = true;
+  bool _isSimulating = false; // State untuk loading tombol simulasi
   int _sisaDetik = 0;
   Timer? _countdownTimer;
   Timer? _pollTimer;
@@ -41,7 +42,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (result['success'] == true) {
       setState(() {
         _pemesanan = result['pemesanan'];
-        _sisaDetik = result['sisa_detik'] is int ? result['sisa_detik'] : 0;
+        _sisaDetik = int.tryParse(result['sisa_detik'].toString()) ?? 0;
         _isLoading = false;
       });
       _startCountdown();
@@ -55,14 +56,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _startCountdown() {
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_sisaDetik > 0) {
         setState(() => _sisaDetik--);
       } else {
         _countdownTimer?.cancel();
         _pollTimer?.cancel();
+        
+        await _bookingService.cancelBooking(widget.pemesananId);
+
         if (mounted) {
-          Helpers.showSnackBar(context, 'Waktu habis! Pesanan dibatalkan.', isError: true);
+          Helpers.showSnackBar(context, 'Waktu habis! Pesanan otomatis dibatalkan.', isError: true);
           Navigator.pop(context);
         }
       }
@@ -94,6 +98,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  // --- FUNGSI SIMULASI QR CODE ---
+  Future<void> _simulateQRPayment() async {
+    setState(() => _isSimulating = true);
+    final result = await _bookingService.simulateQRPayment(widget.pemesananId);
+    setState(() => _isSimulating = false);
+
+    if (result['success'] == true && mounted) {
+      _countdownTimer?.cancel();
+      _pollTimer?.cancel();
+      Helpers.showSnackBar(context, 'Pembayaran Diterima! Pesanan dikonfirmasi.', isError: false);
+      Navigator.pop(context);
+    } else if (mounted) {
+      Helpers.showSnackBar(context, result['message'] ?? 'Simulasi Gagal', isError: true);
+    }
+  }
+
   String get _timerText {
     final m = (_sisaDetik ~/ 60).toString().padLeft(2, '0');
     final s = (_sisaDetik % 60).toString().padLeft(2, '0');
@@ -110,7 +130,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Timer
+            // Timer Hitung Mundur
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -131,7 +151,47 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Detail
+            // --- BOX DUMMY QR CODE ---
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Text('Scan QRIS untuk Membayar', style: AppTextStyles.heading.copyWith(fontSize: 16)),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.borderColor, width: 2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.qr_code_2, size: 160, color: AppColors.textDark),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: _isSimulating 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.check_circle_outline),
+                        label: Text(_isSimulating ? 'Memproses...' : 'Simulasikan Pembayaran'),
+                        onPressed: _isSimulating ? null : _simulateQRPayment,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGreen,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // ---------------------------
+
+            // Detail Pesanan
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(

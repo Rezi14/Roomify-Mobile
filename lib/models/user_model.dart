@@ -43,4 +43,5 @@ class UserModel {
 
   bool get isAdmin => role?.namaRole == 'admin';
   bool get isPelanggan => role?.namaRole == 'pelanggan';
+  bool get isEmailVerified => emailVerifiedAt != null;
 }

@@ -160,4 +160,17 @@ class BookingService {
       'message': data['message'],
     };
   }
+  Future<Map<String, dynamic>> simulateQRPayment(int id) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/booking/$id/simulate-pay'),
+      headers: await _headers(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    return {
+      'success': response.statusCode == 200,
+      'message': data['message'],
+    };
+  }
 }

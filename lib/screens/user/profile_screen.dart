@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -17,13 +18,29 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _profileService = ProfileService();
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    // Ambil data pertama kali saat layar dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<BookingProvider>(context, listen: false).fetchOrders();
     });
+
+    // Jalankan timer untuk polling (tarik data diam-diam) setiap 5 detik
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        Provider.of<BookingProvider>(context, listen: false).fetchOrders();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // WAJIB dimatikan agar tidak bocor di memori saat pindah menu
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _showEditProfileDialog() {
@@ -124,14 +141,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Info User
+            // --- INFO USER ---
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    CircleAvatar(radius: 40, backgroundColor: AppColors.primary,
+                    CircleAvatar(
+                        radius: 40, 
+                        backgroundColor: AppColors.primary,
                         child: Text(auth.user?.name.substring(0, 1).toUpperCase() ?? '?',
                             style: const TextStyle(fontSize: 32, color: Colors.white))),
                     const SizedBox(height: 12),
@@ -153,11 +172,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Riwayat Pesanan
+            // --- RIWAYAT PESANAN ---
             Text('Riwayat Pesanan', style: AppTextStyles.heading.copyWith(fontSize: 18)),
             const SizedBox(height: 8),
 
-            if (booking.isLoading)
+            // Kondisi ini mencegah layar berkedip saat polling Real-Time berjalan
+            if (booking.isLoading && booking.orders.isEmpty)
               const Center(child: CircularProgressIndicator())
             else if (booking.orders.isEmpty)
               const Center(child: Padding(padding: EdgeInsets.all(32),
@@ -167,8 +187,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: ListTile(
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order.idPemesanan))),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order.idPemesanan)),
+                      ).then((_) {
+                        // Tarik data ulang saat user menekan kembali (Back) dari Order Detail
+                        Provider.of<BookingProvider>(context, listen: false).fetchOrders();
+                      }),
                       title: Text(order.kamar?.tipeKamar?.namaTipeKamar ?? 'Kamar ${order.kamarId}'),
                       subtitle: Text(
                           '${Helpers.formatTanggalPendek(order.checkInDate)} - ${Helpers.formatTanggalPendek(order.checkOutDate)}'),

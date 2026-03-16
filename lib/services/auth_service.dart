@@ -151,4 +151,17 @@ class AuthService {
       'message': data['message'],
     };
   }
+  Future<Map<String, dynamic>> resendVerification() async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/email/verification-notification'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    return {
+      'success': response.statusCode == 200 || response.statusCode == 201,
+      'message': data['message'] ?? 'Berhasil mengirim ulang email verifikasi.',
+    };
+  }
 }

@@ -16,12 +16,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // 1. Inisialisasi default tanggal: Hari Ini & Besok
+  late String activeCheckIn;
+  late String activeCheckOut;
+
   @override
   void initState() {
     super.initState();
+    
+    // Format tanggal ke YYYY-MM-DD
+    final now = DateTime.now();
+    final tomorrow = now.add(const Duration(days: 1));
+    activeCheckIn = now.toString().substring(0, 10);
+    activeCheckOut = tomorrow.toString().substring(0, 10);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bp = Provider.of<BookingProvider>(context, listen: false);
-      bp.fetchKamars();
+      // 2. Kirim parameter tanggal default saat load awal
+      bp.fetchKamars(checkIn: activeCheckIn, checkOut: activeCheckOut);
       bp.fetchFilterData();
     });
   }
@@ -40,6 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
           tipeKamars: bp.tipeKamars,
           fasilitas: bp.fasilitas,
           onApply: (filters) {
+            // 3. Update state tanggal aktif jika user memilih tanggal di filter
+            setState(() {
+              if (filters['check_in'] != null) activeCheckIn = filters['check_in'];
+              if (filters['check_out'] != null) activeCheckOut = filters['check_out'];
+            });
+
             bp.fetchKamars(
               checkIn: filters['check_in'],
               checkOut: filters['check_out'],
@@ -74,39 +92,77 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: bookingProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : bookingProvider.kamars.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.search_off, size: 64, color: AppColors.textMuted),
-                      SizedBox(height: 16),
-                      Text('Tidak ada kamar tersedia.',
-                          style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => bookingProvider.fetchKamars(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: bookingProvider.kamars.length,
-                    itemBuilder: (_, index) {
-                      final kamar = bookingProvider.kamars[index];
-                      return KamarCard(
-                        kamar: kamar,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BookingScreen(kamarId: kamar.idKamar),
-                          ),
-                        ),
-                      );
-                    },
+      body: Column(
+        children: [
+          // 4. Banner Informasi Tanggal Aktif
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: AppColors.primary.withOpacity(0.1),
+            child: Row(
+              children: [
+                const Icon(Icons.date_range, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Ketersediaan: $activeCheckIn s/d $activeCheckOut',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          
+          // List Kamar
+          Expanded(
+            child: bookingProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : bookingProvider.kamars.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off, size: 64, color: AppColors.textMuted),
+                            SizedBox(height: 16),
+                            Text('Tidak ada kamar tersedia.',
+                                style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        // Pastikan refresh juga mengirimkan tanggal terakhir yang aktif
+                        onRefresh: () => bookingProvider.fetchKamars(
+                          checkIn: activeCheckIn,
+                          checkOut: activeCheckOut,
+                        ),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: bookingProvider.kamars.length,
+                          itemBuilder: (_, index) {
+                            final kamar = bookingProvider.kamars[index];
+                            return KamarCard(
+                              kamar: kamar,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  // Opsional: Anda bisa mengirim tanggal aktif ini ke BookingScreen 
+                                  // agar otomatis terisi di form booking-nya nanti.
+                                  builder: (_) => BookingScreen(
+                                    kamarId: kamar.idKamar,
+                                    initialCheckIn: activeCheckIn,
+                                    initialCheckOut: activeCheckOut,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }

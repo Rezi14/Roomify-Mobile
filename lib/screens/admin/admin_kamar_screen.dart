@@ -65,8 +65,13 @@ class _AdminKamarScreenState extends State<AdminKamarScreen> {
                               color: k.statusKamar ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text(k.statusKamar ? 'Tersedia' : 'Terisi',
-                                style: TextStyle(color: k.statusKamar ? Colors.green : Colors.red, fontSize: 12)),
+                            // PERBAIKAN POIN 1: Mengubah Teks Badge Status Kamar
+                            child: Text(k.statusKamar ? 'Normal' : 'Maintenance',
+                                style: TextStyle(
+                                  color: k.statusKamar ? Colors.green : Colors.red, 
+                                  fontSize: 12, 
+                                  fontWeight: FontWeight.bold
+                                )),
                           ),
                           IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showForm(k)),
                           IconButton(
@@ -194,10 +199,13 @@ class _AdminKamarFormState extends State<AdminKamarForm> {
                 onChanged: (val) => setState(() => _selectedTipe = val),
               ),
               const SizedBox(height: 16),
+              // PERBAIKAN POIN 2: Label & Subtitle Switch List Tile diubah agar lebih jelas
               SwitchListTile(
-                title: const Text('Status Kamar'),
-                subtitle: Text(_statusKamar ? 'Tersedia' : 'Terisi'),
+                title: const Text('Kondisi Kamar (Bisa Disewa)'),
+                subtitle: Text(_statusKamar ? 'Ya, Kamar Berfungsi Normal' : 'Tidak, Sedang Rusak / Maintenance'),
                 value: _statusKamar,
+                activeColor: Colors.green,
+                inactiveThumbColor: Colors.red,
                 onChanged: (val) => setState(() => _statusKamar = val),
                 contentPadding: EdgeInsets.zero,
               ),

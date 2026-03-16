@@ -32,7 +32,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isSubmitting = false);
 
     if (result['success'] == true) {
-      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+      if (mounted) {
+        // PERBAIKAN: Tampilkan Pop-Up instruksi verifikasi email
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.mark_email_unread, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Text('Cek Email Anda'),
+              ],
+            ),
+            content: const Text(
+              'Registrasi berhasil! Kami telah mengirimkan tautan verifikasi ke email Anda. '
+              'Silakan verifikasi email Anda terlebih dahulu agar dapat melakukan pemesanan kamar.',
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                onPressed: () {
+                  Navigator.pop(ctx); // Tutup dialog
+                  Navigator.of(context).popUntil((route) => route.isFirst); // Kembali ke Home/Login
+                },
+                child: const Text('Mengerti', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
     } else {
       if (mounted) Helpers.showSnackBar(context, result['message'] ?? 'Gagal.', isError: true);
     }
