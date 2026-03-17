@@ -40,39 +40,45 @@ class AuthProvider extends ChangeNotifier {
 
   /// Login
   Future<Map<String, dynamic>> login(String emailOrName, String password) async {
-    _isLoading = true;
-    notifyListeners();
+    // KITA HAPUS _isLoading = true di sini agar LoginScreen tidak di-unmount oleh sistem main.dart
+    try {
+      final result = await _authService.login(emailOrName, password);
 
-    final result = await _authService.login(emailOrName, password);
+      if (result['success'] == true) {
+        _user = result['user'];
+        _isLoggedIn = true;
+        // Hanya panggil notifyListeners JIKA sukses login agar aplikasi berpindah ke HomeScreen
+        notifyListeners(); 
+      }
 
-    if (result['success'] == true) {
-      _user = result['user'];
-      _isLoggedIn = true;
+      return result;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan sistem internal.'
+      };
     }
-
-    _isLoading = false;
-    notifyListeners();
-
-    return result;
   }
 
   /// Register
   Future<Map<String, dynamic>> register(
       String name, String email, String password, String passwordConfirmation) async {
-    _isLoading = true;
-    notifyListeners();
+    try {
+      final result = await _authService.register(name, email, password, passwordConfirmation);
 
-    final result = await _authService.register(name, email, password, passwordConfirmation);
+      if (result['success'] == true) {
+        _user = result['user'];
+        _isLoggedIn = true;
+        notifyListeners(); 
+      }
 
-    if (result['success'] == true) {
-      _user = result['user'];
-      _isLoggedIn = true;
+      return result;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan sistem internal.'
+      };
     }
-
-    _isLoading = false;
-    notifyListeners();
-
-    return result;
   }
 
   /// Logout

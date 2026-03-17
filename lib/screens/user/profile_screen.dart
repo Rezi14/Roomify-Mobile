@@ -118,6 +118,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // --- FUNGSI KONFIRMASI LOGOUT ---
+  Future<void> _confirmLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.power_settings_new_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Keluar Akun?', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun Anda?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Ya, Keluar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      
+      // Tampilkan loading sebentar agar transisi lebih halus
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      await Provider.of<AuthProvider>(context, listen: false).logout();
+      
+      if (!mounted) return;
+      // Hapus semua rute dan kembali ke layar awal
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+  // --------------------------------
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -129,10 +180,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await auth.logout();
-              if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+            // Panggil fungsi konfirmasi yang baru saja dibuat
+            onPressed: _confirmLogout,
           ),
         ],
       ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/constants.dart';
-import '../../utils/helpers.dart';
+// import '../../utils/helpers.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -20,36 +20,69 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isSubmitting = false;
 
-  Future<void> _login() async {
+Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
 
-    final result = await Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    ).login(_emailOrNameCtrl.text.trim(), _passwordCtrl.text);
+    try {
+      final result = await Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).login(_emailOrNameCtrl.text.trim(), _passwordCtrl.text);
 
-    if (mounted) {
-      setState(() {
-        _isSubmitting = false;
-      });
-    }
+      if (!mounted) return;
 
-    if (result['success'] == true) {
-      // Navigation handled by SplashDecider (Consumer)
-    } else {
-      if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          result['message'] ?? 'Login gagal.',
-          isError: true,
-        );
+      setState(() => _isSubmitting = false);
+
+      if (result['success'] == true) {
+        // Berhasil login, navigasi sudah otomatis ditangani Provider
+      } else {
+        // Tampilkan Popup Dialog Error karena kredensial salah
+        _showErrorDialog(result['message'] ?? 'Email/Username atau password salah.');
       }
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() => _isSubmitting = false);
+      _showErrorDialog('Terjadi kesalahan yang tidak terduga.');
     }
   }
 
-  // --- TAMBAHKAN DISPOSE DI SINI ---
+  // --- FUNGSI UNTUK MENAMPILKAN POPUP ERROR ---
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Login Gagal', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15, height: 1.5),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+  // --------------------------------------------
+
   @override
   void dispose() {
     // Bersihkan controller dari memori saat layar login ditutup
@@ -57,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordCtrl.dispose();
     super.dispose();
   }
-  // ---------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Logo / Title
-                      Icon(Icons.hotel, size: 64, color: AppColors.primary),
+                      const Icon(Icons.hotel, size: 64, color: AppColors.primary),
                       const SizedBox(height: 8),
                       Text(
                         'Roomify',
@@ -93,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text('Selamat Datang Kembali', style: AppTextStyles.body),
                       const SizedBox(height: 32),
 
-                      // Email atau Username (sesuai LoginController: email_or_name)
+                      // Email atau Username
                       TextFormField(
                         controller: _emailOrNameCtrl,
                         decoration: const InputDecoration(

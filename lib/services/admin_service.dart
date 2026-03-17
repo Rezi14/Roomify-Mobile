@@ -59,13 +59,18 @@ class AdminService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['kamars'] as List).map((e) => KamarModel.fromJson(e)).toList();
+      return (data['kamars'] as List)
+          .map((e) => KamarModel.fromJson(e))
+          .toList();
     }
     throw Exception('Gagal memuat kamar');
   }
 
-  Future<Map<String, dynamic>> createKamar(
-      {required String nomorKamar, required int idTipeKamar, required bool statusKamar}) async {
+  Future<Map<String, dynamic>> createKamar({
+    required String nomorKamar,
+    required int idTipeKamar,
+    required bool statusKamar,
+  }) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/admin/kamars'),
       headers: await _headers(),
@@ -76,11 +81,19 @@ class AdminService {
       }),
     );
     final data = jsonDecode(response.body);
-    return {'success': response.statusCode == 201, 'message': data['message'], 'data': data};
+    return {
+      'success': response.statusCode == 201,
+      'message': data['message'],
+      'data': data,
+    };
   }
 
-  Future<Map<String, dynamic>> updateKamar(int id,
-      {required String nomorKamar, required int idTipeKamar, bool? statusKamar}) async {
+  Future<Map<String, dynamic>> updateKamar(
+    int id, {
+    required String nomorKamar,
+    required int idTipeKamar,
+    bool? statusKamar,
+  }) async {
     final body = <String, dynamic>{
       'nomor_kamar': nomorKamar,
       'id_tipe_kamar': idTipeKamar,
@@ -117,7 +130,9 @@ class AdminService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['tipe_kamars'] as List).map((e) => TipeKamarModel.fromJson(e)).toList();
+      return (data['tipe_kamars'] as List)
+          .map((e) => TipeKamarModel.fromJson(e))
+          .toList();
     }
     throw Exception('Gagal memuat tipe kamar');
   }
@@ -159,10 +174,15 @@ class AdminService {
     final response = await http.Response.fromStream(streamedResponse);
     final data = jsonDecode(response.body);
 
-    return {'success': response.statusCode == 201, 'message': data['message'], 'data': data};
+    return {
+      'success': response.statusCode == 201,
+      'message': data['message'],
+      'data': data,
+    };
   }
 
-  Future<Map<String, dynamic>> updateTipeKamar(int id, {
+  Future<Map<String, dynamic>> updateTipeKamar(
+    int id, {
     required String namaTipeKamar,
     required double hargaPerMalam,
     required int kapasitas,
@@ -225,7 +245,9 @@ class AdminService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['fasilitas'] as List).map((e) => FasilitasModel.fromJson(e)).toList();
+      return (data['fasilitas'] as List)
+          .map((e) => FasilitasModel.fromJson(e))
+          .toList();
     }
     throw Exception('Gagal memuat fasilitas');
   }
@@ -250,7 +272,8 @@ class AdminService {
     return {'success': response.statusCode == 201, 'message': data['message']};
   }
 
-  Future<Map<String, dynamic>> updateFasilitas(int id, {
+  Future<Map<String, dynamic>> updateFasilitas(
+    int id, {
     required String namaFasilitas,
     String? deskripsi,
     double? biayaTambahan,
@@ -318,7 +341,8 @@ class AdminService {
     return {'success': response.statusCode == 201, 'message': data['message']};
   }
 
-  Future<Map<String, dynamic>> updateUser(int id, {
+  Future<Map<String, dynamic>> updateUser(
+    int id, {
     required String name,
     required String email,
     required int idRole,
@@ -365,9 +389,104 @@ class AdminService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['pemesanans'] as List).map((e) => PemesananModel.fromJson(e)).toList();
+      return (data['pemesanans'] as List)
+          .map((e) => PemesananModel.fromJson(e))
+          .toList();
     }
     throw Exception('Gagal memuat pemesanan');
+  }
+
+  /// FUNGSI BARU: CREATE PEMESANAN MANUAL
+  Future<Map<String, dynamic>> createPemesanan({
+    int? userId,
+    required int kamarId,
+    required String checkInDate,
+    required String checkOutDate,
+    required int jumlahTamu,
+    required double totalHarga,
+    required String statusPemesanan,
+    required List<int> fasilitasIds,
+    required String customerType,
+    String? newUserName, // Untuk tamu baru
+    String? newUserEmail,
+  }) async {
+    
+    // 1. Pastikan Map dideklarasikan sebagai <String, dynamic>
+    final body = <String, dynamic>{
+      'kamar_id': kamarId,
+      'check_in_date': checkInDate,
+      'check_out_date': checkOutDate,
+      'jumlah_tamu': jumlahTamu,
+      'total_harga': totalHarga,
+      'status_pemesanan': statusPemesanan,
+      'fasilitas_ids': fasilitasIds,
+      'customer_type': customerType, // <--- 2. INI SANGAT PENTING AGAR LARAVEL TIDAK ERROR
+    };
+
+    // 3. Masukkan data dinamis sesuai customer_type
+    if (customerType == 'new') {
+      body['new_user_name'] = newUserName;
+      body['new_user_email'] = newUserEmail;
+    } else {
+      body['user_id'] = userId;
+    }
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/admin/pemesanans'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+
+    final data = jsonDecode(response.body);
+    return {
+      'success': response.statusCode == 201 || response.statusCode == 200,
+      'message': data['message'] ?? 'Gagal membuat pesanan.',
+    };
+  }
+
+  /// FUNGSI: MENGAMBIL DETAIL PEMESANAN (Untuk Edit)
+  Future<PemesananModel> getPemesananDetail(int id) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/admin/pemesanans/$id'),
+      headers: await _headers(),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return PemesananModel.fromJson(data['pemesanan']);
+    }
+    throw Exception('Gagal memuat detail pesanan');
+  }
+
+  /// FUNGSI: UPDATE PEMESANAN (Untuk Edit)
+  Future<Map<String, dynamic>> updatePemesanan(
+    int id, {
+    required int userId,
+    required int kamarId,
+    required String checkInDate,
+    required String checkOutDate,
+    required int jumlahTamu,
+    required List<int> fasilitasIds,
+    required String statusPemesanan,
+  }) async {
+    final body = {
+      'user_id': userId,
+      'kamar_id': kamarId,
+      'check_in_date': checkInDate,
+      'check_out_date': checkOutDate,
+      'jumlah_tamu': jumlahTamu,
+      'fasilitas_ids': fasilitasIds,
+      'status_pemesanan': statusPemesanan,
+    };
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/admin/pemesanans/$id'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+
+    final data = jsonDecode(response.body);
+    return {'success': response.statusCode == 200, 'message': data['message']};
   }
 
   Future<Map<String, dynamic>> confirmPemesanan(int id) async {
@@ -415,7 +534,9 @@ class AdminService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['riwayat'] as List).map((e) => PemesananModel.fromJson(e)).toList();
+      return (data['riwayat'] as List)
+          .map((e) => PemesananModel.fromJson(e))
+          .toList();
     }
     throw Exception('Gagal memuat riwayat');
   }

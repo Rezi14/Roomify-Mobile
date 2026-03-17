@@ -42,32 +42,57 @@ class AuthService {
   /// POST /api/login
   /// Sesuai AuthApiController@login: email_or_name + password
   Future<Map<String, dynamic>> login(String emailOrName, String password) async {
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/login'),
-      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-      body: jsonEncode({
-        'email_or_name': emailOrName,
-        'password': password,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/login'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode({
+          'email_or_name': emailOrName,
+          'password': password,
+        }),
+      );
 
-    final data = jsonDecode(response.body);
+      // Gunakan try-catch untuk mengantisipasi jika respons server bukan JSON (misal HTML 500 error)
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        return {
+          'success': false,
+          'message': 'Terjadi masalah pada server. (Status: ${response.statusCode})',
+        };
+      }
 
-    if (response.statusCode == 200) {
-      await saveToken(data['token']);
+      if (response.statusCode == 200) {
+        await saveToken(data['token']);
+        return {
+          'success': true,
+          'message': data['message'],
+          'user': UserModel.fromJson(data['user']),
+          'token': data['token'],
+        };
+      }
+
+      // Ambil pesan error dari backend
+      String errorMsg = 'Login gagal. Email/Username atau password salah.';
+      if (data.containsKey('message') && data['message'] != null) {
+        errorMsg = data['message'];
+      } else if (data.containsKey('error') && data['error'] != null) {
+        errorMsg = data['error'];
+      }
+
       return {
-        'success': true,
-        'message': data['message'],
-        'user': UserModel.fromJson(data['user']),
-        'token': data['token'],
+        'success': false,
+        'message': errorMsg,
+        'errors': data['errors'],
+      };
+    } catch (e) {
+      // Tangkap error jika internet terputus atau API mati sama sekali
+      return {
+        'success': false,
+        'message': 'Gagal terhubung ke server. Periksa koneksi internet Anda.',
       };
     }
-
-    return {
-      'success': false,
-      'message': data['message'] ?? 'Login gagal.',
-      'errors': data['errors'],
-    };
   }
 
   /// POST /api/register
